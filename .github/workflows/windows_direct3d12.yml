@@ -1,21 +1,54 @@
+
 name: Windows (Direct3D12)
 
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
+      - main
 
 jobs:
   build:
-
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Compile
-      run: |
-        cd paint
-        ../base/make --compile
+      - uses: actions/checkout@v4
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          Set-Location paint
+          ../base/make --compile
+
+      - name: Check build output
+        shell: pwsh
+        run: |
+          Write-Host "Searching for ArmorPaint.exe..."
+          $files = Get-ChildItem -Path .\paint `
+            -Filter ArmorPaint.exe `
+            -Recurse -File `
+            -ErrorAction SilentlyContinue
+
+          if ($files) {
+            $files | Select-Object FullName, Length |
+              Format-Table -AutoSize
+          } else {
+            Write-Host "ArmorPaint.exe not found."
+            Write-Host "Checking generated build files..."
+            Get-ChildItem .\paint\build `
+              -Recurse -File `
+              -ErrorAction SilentlyContinue |
+              Select-Object -First 30 FullName
+          }
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArmorPaint-Windows-Direct3D12
+          path: |
+            paint/build/**
+            paint/**/*.exe
+          if-no-files-found: error
+          retention-days: 7
